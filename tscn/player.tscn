@@ -131,3 +131,7 @@ collision_mask = 4
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="InteractArea" unique_id=1971734399]
 shape = SubResource("CircleShape2D_7j80i")
+
+[node name="HeldIcon" type="Sprite2D" parent="." unique_id=2095705070]
+visible = false
+offset = Vector2(0, -30)

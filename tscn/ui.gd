@@ -14,10 +14,30 @@ extends CanvasLayer
 
 @onready var shop_list: VBoxContainer = $ShopPanel/VBoxContainer/ItemList
 
+@onready var cook_status: Label = $CookingPanel/VBoxContainer/StatusLabel
+@onready var shop_status: Label = $ShopPanel/VBoxContainer/StatusLabel
+@onready var bag_status: Label = $BagPanel/VBoxContainer/StatusLabel
+@onready var hotbar_root: Control = $Hotbar
+@onready var hotbar_slots := [
+	$Hotbar/HBoxContainer/Slot1/Icon,
+	$Hotbar/HBoxContainer/Slot2/Icon,
+	$Hotbar/HBoxContainer/Slot3/Icon
+]
+@onready var hotbar_panels := [
+	$Hotbar/HBoxContainer/Slot1,
+	$Hotbar/HBoxContainer/Slot2,
+	$Hotbar/HBoxContainer/Slot3
+]
+
+
 var ui_open := false
 var mode := "" # "cook" / "shop"
 var selection_index := 0
 var current_player: Node = null
+var cook_sel := 0
+var shop_sel := 0
+var bag_sel := 0
+var bag_view_ids: Array[String] = []
 
 var recipes := [
 	{
@@ -42,10 +62,42 @@ var shop_items := [
 	{"id":"meat_pork",     "name":"Pork",          "price": 14},
 ]
 
+func _item_icon(id: String) -> Texture2D:
+	if id == "":
+		return null
+	match id: ##temp assets
+		"veggies":
+			return load("res://Assets/Vegetables.png")
+		"meat_monster":
+			return load("res://Assets/Meat.png")
+		"spice":
+			return load("res://Assets/Silverware.png")
+		"sauce":
+			return load("res://Assets/Fruit.png")
+		"flatbread":
+			return load("res://Assets/Furniture.png")
+		_:
+			return load("res://Assets/Fruit.png")
+
+
+func _refresh_hud():
+	for i in range(3):
+		var id := Inventory.hotbar[i]
+		var icon: TextureRect = hotbar_slots[i]
+		icon.texture = _item_icon(id)
+
+		var p: PanelContainer = hotbar_panels[i]
+		p.modulate = Color(1,1,1,1) if i == Inventory.hotbar_selected else Color(0.7,0.7,0.7,1)
+
+
 func _ready():
 	_build_cooking_ui()
 	_build_shop_ui()
 	_hide_all()
+	add_to_group("ui_manager")
+	Inventory.changed.connect(_refresh_hud)
+	_refresh_hud()
+
 
 func _unhandled_input(event):
 	if not ui_open:
@@ -72,6 +124,18 @@ func _unhandled_input(event):
 	if event.is_action_pressed("interact"):
 		_confirm()
 		get_viewport().set_input_as_handled()
+		
+	if ui_open and mode == "bag" and event.is_action_pressed("swap_hotbar"):
+		if selection_index >= 0 and selection_index < bag_view_ids.size():
+			var id := bag_view_ids[selection_index]
+			var ok := Inventory.equip_from_bag(id)
+			if ok:
+				_set_status("Equipped to slot %d: %s" % [Inventory.hotbar_selected + 1, id], true)
+			else:
+				_set_status("Cannot equip.", false)
+			_refresh_bag()
+			_refresh_hud()
+
 
 
 func open_cooking(player: Node) -> void:
@@ -80,7 +144,7 @@ func open_cooking(player: Node) -> void:
 
 	mode = "cook"
 	ui_open = true
-	selection_index = 0
+	selection_index = cook_sel
 
 	cooking_panel.visible = true
 	shop_panel.visible = false
@@ -92,7 +156,7 @@ func open_shop(player: Node) -> void:
 
 	mode = "shop"
 	ui_open = true
-	selection_index = 0
+	selection_index = shop_sel
 
 	shop_panel.visible = true
 	cooking_panel.visible = false
@@ -128,10 +192,17 @@ func _move_selection(delta: int):
 	if count <= 0:
 		return
 	selection_index = clamp(selection_index + delta, 0, count - 1)
-	if mode == "cook":
+
+	if mode == "cook": 
+		cook_sel = selection_index
 		_refresh_cooking()
-	else:
+	elif mode == "shop": 
+		shop_sel = selection_index
 		_refresh_shop()
+	elif mode == "bag": 
+		bag_sel = selection_index
+		_refresh_bag()
+
 
 func _confirm():
 	if mode == "cook":
@@ -221,6 +292,9 @@ func _cook_selected():
 	for k in r["gives"].keys():
 		Inventory.add_item(k, int(r["gives"][k]))
 
+	_set_status("Cooked: %s" % r["name"], true)
+	
+	
 func _buy_selected():
 	var it = shop_items[selection_index]
 	var price := int(it["price"])
@@ -228,6 +302,8 @@ func _buy_selected():
 		return
 	Inventory.money -= price
 	Inventory.add_item(it["id"], 1)
+	_set_status("Bought: %s" % it["name"], true)
+
 
 func toggle_bag(player: Node) -> void:
 	if ui_open and mode == "bag":
@@ -242,7 +318,7 @@ func open_bag(player: Node) -> void:
 
 	mode = "bag"
 	ui_open = true
-	selection_index = 0
+	selection_index = bag_sel
 
 	bag_panel.visible = true
 	cooking_panel.visible = false
@@ -263,5 +339,21 @@ func _refresh_bag() -> void:
 		if amt <= 0:
 			continue
 		var line := Label.new()
+		bag_view_ids.append(k)
 		line.text = "%s x%d" % [k, amt]
 		bag_list.add_child(line)
+		
+	bag_view_ids.clear()
+
+
+func _set_status(msg: String, ok: bool) -> void:
+	var c = Color(0.25, 0.9, 0.35) if ok else Color(0.95, 0.25, 0.25)
+	if mode == "cook":
+		cook_status.text = msg
+		cook_status.modulate = c
+	elif mode == "shop":
+		shop_status.text = msg
+		shop_status.modulate = c
+	elif mode == "bag":
+		bag_status.text = msg
+		bag_status.modulate = c

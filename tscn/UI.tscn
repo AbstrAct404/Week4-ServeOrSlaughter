@@ -6,8 +6,18 @@
 script = ExtResource("1_xnesq")
 
 [node name="CookingPanel" type="PanelContainer" parent="." unique_id=1126338330]
-offset_right = 40.0
-offset_bottom = 40.0
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -56.0
+offset_right = 20.0
+offset_bottom = 56.0
+grow_horizontal = 2
+grow_vertical = 2
+scale = Vector2(1.5, 1.5)
 
 [node name="VBoxContainer" type="VBoxContainer" parent="CookingPanel" unique_id=1115156821]
 layout_mode = 2
@@ -27,9 +37,22 @@ layout_mode = 2
 [node name="MoneyLabel" type="Label" parent="CookingPanel/VBoxContainer" unique_id=307037584]
 layout_mode = 2
 
+[node name="StatusLabel" type="Label" parent="CookingPanel/VBoxContainer" unique_id=1711214401]
+layout_mode = 2
+
 [node name="ShopPanel" type="PanelContainer" parent="." unique_id=2089945917]
-offset_right = 40.0
-offset_bottom = 40.0
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -54.0
+offset_right = 20.0
+offset_bottom = 54.0
+grow_horizontal = 2
+grow_vertical = 2
+scale = Vector2(1.5, 1.5)
 
 [node name="VBoxContainer" type="VBoxContainer" parent="ShopPanel" unique_id=783742869]
 layout_mode = 2
@@ -46,10 +69,23 @@ layout_mode = 2
 [node name="MoneyLabel" type="Label" parent="ShopPanel/VBoxContainer" unique_id=736399523]
 layout_mode = 2
 
+[node name="StatusLabel" type="Label" parent="ShopPanel/VBoxContainer" unique_id=2016724531]
+layout_mode = 2
+
 [node name="BagPanel" type="PanelContainer" parent="." unique_id=240964170]
 visible = false
-offset_right = 40.0
-offset_bottom = 40.0
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -54.0
+offset_right = 20.0
+offset_bottom = 54.0
+grow_horizontal = 2
+grow_vertical = 2
+scale = Vector2(1.5, 1.5)
 
 [node name="VBoxContainer" type="VBoxContainer" parent="BagPanel" unique_id=143808595]
 layout_mode = 2
@@ -64,4 +100,41 @@ layout_mode = 2
 layout_mode = 2
 
 [node name="Hint" type="Label" parent="BagPanel/VBoxContainer" unique_id=1138042722]
+layout_mode = 2
+
+[node name="StatusLabel" type="Label" parent="BagPanel/VBoxContainer" unique_id=711152870]
+layout_mode = 2
+
+[node name="Hotbar" type="Control" parent="." unique_id=675776203]
+layout_mode = 3
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 0
+pivot_offset = Vector2(0, -10)
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Hotbar" unique_id=275424794]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+pivot_offset = Vector2(0, -10)
+
+[node name="Slot1" type="PanelContainer" parent="Hotbar/HBoxContainer" unique_id=605851765]
+layout_mode = 2
+
+[node name="Icon" type="TextureRect" parent="Hotbar/HBoxContainer/Slot1" unique_id=1906176282]
+layout_mode = 2
+
+[node name="Slot2" type="PanelContainer" parent="Hotbar/HBoxContainer" unique_id=618019977]
+layout_mode = 2
+
+[node name="Icon" type="TextureRect" parent="Hotbar/HBoxContainer/Slot2" unique_id=1700394094]
+layout_mode = 2
+
+[node name="Slot3" type="PanelContainer" parent="Hotbar/HBoxContainer" unique_id=1531588553]
+layout_mode = 2
+
+[node name="Icon" type="TextureRect" parent="Hotbar/HBoxContainer/Slot3" unique_id=842991553]
 layout_mode = 2

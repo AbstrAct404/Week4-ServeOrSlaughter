@@ -8,6 +8,7 @@ var ui_blocked := false
 
 @onready var interact_area: Area2D = $InteractArea
 @onready var sprite: AnimatedSprite2D = $Sprite2D
+@onready var held_icon: Sprite2D = $HeldIcon
 
 func set_ui_blocked(v: bool) -> void:
 	ui_blocked = v
@@ -46,6 +47,41 @@ func _input(event):
 		var ui = get_tree().get_first_node_in_group("ui_manager")
 		if ui:
 			ui.toggle_bag(self)
+	
+	if event.is_action_pressed("hotbar_1"):
+		Inventory.set_selected_slot(0)
+		_update_held_icon()
+	if event.is_action_pressed("hotbar_2"):
+		Inventory.set_selected_slot(1)
+		_update_held_icon()
+	if event.is_action_pressed("hotbar_3"):
+		Inventory.set_selected_slot(2)
+		_update_held_icon()
+
+func _update_held_icon():
+	var id := Inventory.get_selected_item_id()
+	if id == "":
+		held_icon.visible = false
+		held_icon.texture = null
+		return
+
+	held_icon.visible = true
+	held_icon.texture = _item_icon(id)
+
+func _item_icon(id: String) -> Texture2D:
+	match id: ## temp assets
+		"veggies":
+			return load("res://Assets/Vegetables.png")
+		"meat_monster":
+			return load("res://Assets/Meat.png")
+		"spice":
+			return load("res://Assets/Silverware.png")
+		"sauce":
+			return load("res://Assets/Fruit.png")
+		"flatbread":
+			return load("res://Assets/Furniture.png")
+		_:
+			return load("res://Assets/Fruit.png")
 
 
 func try_interact():
@@ -65,3 +101,7 @@ func _update_animation(dir: int) -> void:
 
 	if dir != 0:
 		sprite.flip_h = dir < 0
+
+
+func _ready():
+	_update_held_icon()
