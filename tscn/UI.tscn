@@ -1,0 +1,67 @@
+[gd_scene format=3 uid="uid://bbeywgo1r5jsy"]
+
+[ext_resource type="Script" uid="uid://cun6rk2eou1ka" path="res://tscn/ui.gd" id="1_xnesq"]
+
+[node name="UI" type="CanvasLayer" unique_id=359949993]
+script = ExtResource("1_xnesq")
+
+[node name="CookingPanel" type="PanelContainer" parent="." unique_id=1126338330]
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CookingPanel" unique_id=1115156821]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="CookingPanel/VBoxContainer" unique_id=856026130]
+layout_mode = 2
+
+[node name="RecipeList" type="VBoxContainer" parent="CookingPanel/VBoxContainer" unique_id=1340901232]
+layout_mode = 2
+
+[node name="Detail" type="VBoxContainer" parent="CookingPanel/VBoxContainer" unique_id=229581389]
+layout_mode = 2
+
+[node name="Hint" type="Label" parent="CookingPanel/VBoxContainer" unique_id=736687717]
+layout_mode = 2
+
+[node name="MoneyLabel" type="Label" parent="CookingPanel/VBoxContainer" unique_id=307037584]
+layout_mode = 2
+
+[node name="ShopPanel" type="PanelContainer" parent="." unique_id=2089945917]
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="ShopPanel" unique_id=783742869]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="ShopPanel/VBoxContainer" unique_id=1668750486]
+layout_mode = 2
+
+[node name="ItemList" type="VBoxContainer" parent="ShopPanel/VBoxContainer" unique_id=1864985002]
+layout_mode = 2
+
+[node name="Hint" type="Label" parent="ShopPanel/VBoxContainer" unique_id=406466532]
+layout_mode = 2
+
+[node name="MoneyLabel" type="Label" parent="ShopPanel/VBoxContainer" unique_id=736399523]
+layout_mode = 2
+
+[node name="BagPanel" type="PanelContainer" parent="." unique_id=240964170]
+visible = false
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="BagPanel" unique_id=143808595]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="BagPanel/VBoxContainer" unique_id=373634432]
+layout_mode = 2
+
+[node name="MoneyLabel" type="Label" parent="BagPanel/VBoxContainer" unique_id=1027690043]
+layout_mode = 2
+
+[node name="ItemList" type="VBoxContainer" parent="BagPanel/VBoxContainer" unique_id=774376970]
+layout_mode = 2
+
+[node name="Hint" type="Label" parent="BagPanel/VBoxContainer" unique_id=1138042722]
+layout_mode = 2

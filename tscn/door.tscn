@@ -1,0 +1,33 @@
+[gd_scene format=3 uid="uid://lkr63rya81m8"]
+
+[ext_resource type="Script" uid="uid://da5d2r3a12ge" path="res://door.gd" id="1_v4ngw"]
+[ext_resource type="Texture2D" uid="uid://cf5rv7n0mi68t" path="res://Assets/Door.png" id="2_mairw"]
+[ext_resource type="Script" uid="uid://c8j78r5rpxpn7" path="res://tscn/interact_proxy.gd" id="3_276s7"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_276s7"]
+atlas = ExtResource("2_mairw")
+region = Rect2(72, 0, 36, 64)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_276s7"]
+size = Vector2(47, 64.5)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_mairw"]
+size = Vector2(64, 85)
+
+[node name="Door" type="StaticBody2D" unique_id=1804910814]
+script = ExtResource("1_v4ngw")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=253181172]
+texture = SubResource("AtlasTexture_276s7")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1663782878]
+position = Vector2(0.5, -1)
+shape = SubResource("RectangleShape2D_276s7")
+
+[node name="InteractProxy" type="Area2D" parent="." unique_id=1808693104]
+collision_layer = 4
+script = ExtResource("3_276s7")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractProxy" unique_id=1696960114]
+position = Vector2(-1, -1)
+shape = SubResource("RectangleShape2D_mairw")
