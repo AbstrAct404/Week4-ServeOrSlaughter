@@ -86,6 +86,8 @@ func _item_icon(id: String) -> Texture2D:
 			return load("res://Assets/Fruit.png")
 		"flatbread":
 			return load("res://Assets/Furniture.png")
+		"knife":
+			return load("res://Assets/Silverware.png")
 		_:
 			return load("res://Assets/Fruit.png")
 

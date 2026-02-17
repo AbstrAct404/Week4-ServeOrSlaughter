@@ -12,10 +12,12 @@ var bag: Dictionary = {
 	"mushroom": 0,
 	"veggies": 2,
 	"sauce": 0,
-	"spice": 1
+	"spice": 1,
+	"knife": 1
 }
 
 var money: int = 50
+var reputation: int = 0
 var hotbar: Array[String] = ["", "", ""]
 var hotbar_selected: int = 0  # 0..2
 
@@ -67,3 +69,15 @@ func unequip_to_bag() -> bool:
 	add_item(cur, 1)
 	emit_signal("changed")
 	return true
+
+
+func add_money(amount: int) -> void:
+	money += amount
+	emit_signal("changed")
+
+func add_reputation(delta: int) -> void:
+	reputation = clamp(reputation + delta, -50, 50)
+	emit_signal("changed")
+
+func is_game_over() -> bool:
+	return reputation <= -50

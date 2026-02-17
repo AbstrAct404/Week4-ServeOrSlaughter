@@ -78,6 +78,8 @@ func _item_icon(id: String) -> Texture2D:
 			return load("res://Assets/Fruit.png")
 		"flatbread":
 			return load("res://Assets/Furniture.png")
+		"knife":
+			return load("res://Assets/Silverware.png")
 		"meal_spicy_wrap":
 			return load("res://Assets/meat_wrap.png") 
 		"meal_veggie_wrap":
@@ -187,8 +189,13 @@ func close_ui() -> void:
 	ui_open = false
 	mode = ""
 	_hide_all()
+	if _cust_panel:
+		_cust_panel.visible = false
 	_lock_player(false)
 	current_player = null
+	_cust_current_customer = null
+	_cust_current_player = null
+
 
 # ---------- internal ----------
 func _lock_player(v: bool) -> void:
@@ -263,7 +270,7 @@ func _build_shop_ui():
 
 # ---------- refresh visuals ----------
 func _refresh_cooking():
-	cook_money.text = "Money: $%d" % Inventory.money
+	cook_money.text = "Money: $%d   Rep: %d" % [Inventory.money, Inventory.reputation]
 	# highlight selection
 	for i in recipe_list.get_child_count():
 		var b: Button = recipe_list.get_child(i)
@@ -290,7 +297,7 @@ func _refresh_cooking():
 		recipe_detail.add_child(line)
 
 func _refresh_shop():
-	shop_money.text = "Money: $%d" % Inventory.money
+	shop_money.text = "Money: $%d   Rep: %d" % [Inventory.money, Inventory.reputation]
 	for i in shop_list.get_child_count():
 		var b: Button = shop_list.get_child(i)
 		b.modulate = Color(1,1,1,1) if i == selection_index else Color(0.8,0.8,0.8,1)
@@ -364,7 +371,7 @@ func open_bag(player: Node) -> void:
 
 #fixed the function so it can refelct real buying action
 func _refresh_bag() -> void:
-	bag_money.text = "Money: $%d" % Inventory.money
+	bag_money.text = "Money: $%d   Rep: %d" % [Inventory.money, Inventory.reputation]
 	
 	for c in bag_list.get_children():
 		c.queue_free()
@@ -429,3 +436,184 @@ func _set_status(msg: String, ok: bool) -> void:
 	elif mode == "bag":
 		bag_status.text = msg
 		bag_status.modulate = c
+
+
+# ---------- lightweight feedback helpers ----------
+var _toast_root: Control = null
+var _blackout: ColorRect = null
+var _kill_audio: AudioStreamPlayer = null
+
+func _ensure_feedback_nodes() -> void:
+	if _toast_root != null:
+		return
+	_toast_root = Control.new()
+	_toast_root.name = "ToastRoot"
+	_toast_root.anchor_left = 0
+	_toast_root.anchor_top = 0
+	_toast_root.anchor_right = 1
+	_toast_root.anchor_bottom = 1
+	_toast_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_toast_root.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(_toast_root)
+
+	_blackout = ColorRect.new()
+	_blackout.name = "Blackout"
+	_blackout.anchor_left = 0
+	_blackout.anchor_top = 0
+	_blackout.anchor_right = 1
+	_blackout.anchor_bottom = 1
+	_blackout.color = Color(0,0,0,0)
+	_blackout.visible = false
+	_blackout.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_blackout.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(_blackout)
+
+	_kill_audio = AudioStreamPlayer.new()
+	_kill_audio.name = "KillAudio"
+	_kill_audio.process_mode = Node.PROCESS_MODE_ALWAYS
+	# If you add the file later, this will work automatically.
+	if ResourceLoader.exists("res://Assets/killsound.wav"):
+		_kill_audio.stream = load("res://Assets/killsound.wav")
+	add_child(_kill_audio)
+
+func show_toast(world_pos: Vector2, text: String, seconds: float = 1.3) -> void:
+	_ensure_feedback_nodes()
+	var lab := Label.new()
+	lab.text = text
+	lab.position = world_pos
+	lab.modulate.a = 1.0
+	lab.process_mode = Node.PROCESS_MODE_ALWAYS
+	_toast_root.add_child(lab)
+
+	# simple float-up + fade (no Tween dependency on paused tree)
+	var t := Timer.new()
+	t.wait_time = 0.03
+	t.one_shot = false
+	t.process_mode = Node.PROCESS_MODE_ALWAYS
+	_toast_root.add_child(t)
+
+	var elapsed := 0.0
+	t.timeout.connect(func():
+		elapsed += t.wait_time
+		lab.position.y -= 1.2
+		lab.modulate.a = clamp(1.0 - (elapsed / seconds), 0.0, 1.0)
+		if elapsed >= seconds:
+			t.stop()
+			lab.queue_free()
+			t.queue_free()
+	)
+	t.start()
+
+func play_kill_cut(duration: float = 0.55) -> void:
+	_ensure_feedback_nodes()
+	_blackout.visible = true
+	_blackout.color = Color(0,0,0,1)
+	if _kill_audio and _kill_audio.stream:
+		_kill_audio.play()
+
+	# pause the game while black screen is up
+	get_tree().paused = true
+
+	var timer := Timer.new()
+	timer.wait_time = duration
+	timer.one_shot = true
+	timer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(timer)
+	timer.timeout.connect(func():
+		get_tree().paused = false
+		_blackout.visible = false
+		_blackout.color = Color(0,0,0,0)
+		timer.queue_free()
+	)
+	timer.start()
+
+
+# ---------- Customer interaction menu ----------
+var _cust_panel: PanelContainer = null
+var _cust_label: Label = null
+var _cust_btn_submit: Button = null
+var _cust_btn_kill: Button = null
+var _cust_btn_cancel: Button = null
+var _cust_current_customer: Node = null
+var _cust_current_player: Node = null
+
+func open_customer_menu(player: Node, customer: Node, can_submit: bool, can_kill: bool, want_text: String) -> void:
+	_ensure_customer_panel()
+	_cust_current_player = player
+	_cust_current_customer = customer
+
+	_lock_player(true)
+	ui_open = true
+	mode = "customer"
+	ignore_next_interact = true
+
+	_hide_all()
+	_cust_panel.visible = true
+
+	_cust_label.text = want_text
+	_cust_btn_submit.disabled = not can_submit
+	_cust_btn_kill.disabled = not can_kill
+
+func _ensure_customer_panel() -> void:
+	if _cust_panel != null:
+		return
+
+	_cust_panel = PanelContainer.new()
+	_cust_panel.name = "CustomerPanel"
+	_cust_panel.anchor_left = 0.5
+	_cust_panel.anchor_top = 0.5
+	_cust_panel.anchor_right = 0.5
+	_cust_panel.anchor_bottom = 0.5
+	_cust_panel.offset_left = -110
+	_cust_panel.offset_top = -70
+	_cust_panel.offset_right = 110
+	_cust_panel.offset_bottom = 70
+	_cust_panel.visible = false
+	_cust_panel.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(_cust_panel)
+
+	var vb := VBoxContainer.new()
+	_cust_panel.add_child(vb)
+
+	_cust_label = Label.new()
+	_cust_label.text = "Customer"
+	vb.add_child(_cust_label)
+
+	_cust_btn_submit = Button.new()
+	_cust_btn_submit.text = "Submit Food"
+	vb.add_child(_cust_btn_submit)
+
+	_cust_btn_kill = Button.new()
+	_cust_btn_kill.text = "Kill (Knife)"
+	vb.add_child(_cust_btn_kill)
+
+	_cust_btn_cancel = Button.new()
+	_cust_btn_cancel.text = "Cancel"
+	vb.add_child(_cust_btn_cancel)
+
+	_cust_btn_submit.pressed.connect(func():
+		if _cust_current_customer and _cust_current_customer.has_method("on_player_submit"):
+			_cust_current_customer.on_player_submit(_cust_current_player)
+		close_customer_menu()
+	)
+
+	_cust_btn_kill.pressed.connect(func():
+		# run cut first, then kill
+		play_kill_cut()
+		if _cust_current_customer and _cust_current_customer.has_method("on_player_kill"):
+			_cust_current_customer.on_player_kill(_cust_current_player)
+		close_customer_menu()
+	)
+
+	_cust_btn_cancel.pressed.connect(func():
+		close_customer_menu()
+	)
+
+func close_customer_menu() -> void:
+	ui_open = false
+	mode = ""
+	if _cust_panel:
+		_cust_panel.visible = false
+	_lock_player(false)
+	_cust_current_customer = null
+	_cust_current_player = null
