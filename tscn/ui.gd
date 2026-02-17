@@ -38,13 +38,15 @@ var cook_sel := 0
 var shop_sel := 0
 var bag_sel := 0
 var bag_view_ids: Array[String] = []
+var ignore_next_interact := false
+
 
 var recipes := [
 	{
 		"id": "spicy_wrap",
 		"name": "Spicy Wrap",
-		"needs": {"flatbread": 1, "meat_monster": 1, "spice": 1},
-		"gives": {"meal_spicy_wrap": 1}
+		"needs": {"flatbread": 1, "pork": 1, "spice": 1},
+		"gives": {"meal_spicy_wrap": 1} #changed meat_monster to meat_pork to be able to craft with no monsters
 	},
 	{
 		"id": "veggie_wrap",
@@ -59,7 +61,7 @@ var shop_items := [
 	{"id":"veggies",       "name":"Veggies",       "price": 6},
 	{"id":"sauce",         "name":"Sauce",         "price": 7},
 	{"id":"spice",         "name":"Spice",         "price": 4},
-	{"id":"meat_pork",     "name":"Pork",          "price": 14},
+	{"id":"pork",     "name":"Pork",          "price": 14},
 ]
 
 func _item_icon(id: String) -> Texture2D:
@@ -91,6 +93,7 @@ func _refresh_hud():
 
 
 func _ready():
+	set_process_unhandled_input(true)
 	_build_cooking_ui()
 	_build_shop_ui()
 	_hide_all()
@@ -99,9 +102,11 @@ func _ready():
 	_refresh_hud()
 
 
+
 func _unhandled_input(event):
 	if not ui_open:
 		return
+		
 
 	if event.is_action_pressed("cancel"):
 		close_ui()
@@ -122,8 +127,14 @@ func _unhandled_input(event):
 		get_viewport().set_input_as_handled()
 
 	if event.is_action_pressed("interact"):
+		if ignore_next_interact:
+			ignore_next_interact = false
+			get_viewport().set_input_as_handled()
+			return
+
 		_confirm()
 		get_viewport().set_input_as_handled()
+
 		
 	if ui_open and mode == "bag" and event.is_action_pressed("swap_hotbar"):
 		if selection_index >= 0 and selection_index < bag_view_ids.size():
@@ -146,9 +157,12 @@ func open_cooking(player: Node) -> void:
 	ui_open = true
 	selection_index = cook_sel
 
+	ignore_next_interact = true
+
 	cooking_panel.visible = true
 	shop_panel.visible = false
 	_refresh_cooking()
+
 
 func open_shop(player: Node) -> void:
 	current_player = player
@@ -158,9 +172,12 @@ func open_shop(player: Node) -> void:
 	ui_open = true
 	selection_index = shop_sel
 
+	ignore_next_interact = true
+
 	shop_panel.visible = true
 	cooking_panel.visible = false
 	_refresh_shop()
+
 
 func close_ui() -> void:
 	ui_open = false
@@ -298,11 +315,17 @@ func _cook_selected():
 func _buy_selected():
 	var it = shop_items[selection_index]
 	var price := int(it["price"])
+	print("BUY CALLED item =", it["id"], "price =", price, "money before =", Inventory.money)
+
 	if Inventory.money < price:
+		_set_status("Not enough money.", false)
 		return
+
 	Inventory.money -= price
 	Inventory.add_item(it["id"], 1)
+	print("money after =", Inventory.money)
 	_set_status("Bought: %s" % it["name"], true)
+
 
 
 func toggle_bag(player: Node) -> void:
@@ -325,15 +348,20 @@ func open_bag(player: Node) -> void:
 	shop_panel.visible = false
 	_refresh_bag()
 
+
+
+#fixed the function so it can refelct real buying action
 func _refresh_bag() -> void:
 	bag_money.text = "Money: $%d" % Inventory.money
-
+	
 	for c in bag_list.get_children():
 		c.queue_free()
-
+		
+	bag_view_ids.clear()  # <-- move clear HERE
+	
 	var keys := Inventory.bag.keys()
 	keys.sort()
-
+	
 	for k in keys:
 		var amt := int(Inventory.bag.get(k, 0))
 		if amt <= 0:
@@ -342,8 +370,7 @@ func _refresh_bag() -> void:
 		bag_view_ids.append(k)
 		line.text = "%s x%d" % [k, amt]
 		bag_list.add_child(line)
-		
-	bag_view_ids.clear()
+
 
 
 func _set_status(msg: String, ok: bool) -> void:

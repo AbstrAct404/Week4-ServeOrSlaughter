@@ -40,6 +40,9 @@ func _physics_process(delta):
 	_update_animation(dir)
 
 func _input(event):
+	if ui_blocked:
+		return
+
 	if event.is_action_pressed("interact"):
 		try_interact()
 
@@ -47,16 +50,19 @@ func _input(event):
 		var ui = get_tree().get_first_node_in_group("ui_manager")
 		if ui:
 			ui.toggle_bag(self)
-	
+
 	if event.is_action_pressed("hotbar_1"):
 		Inventory.set_selected_slot(0)
 		_update_held_icon()
+
 	if event.is_action_pressed("hotbar_2"):
 		Inventory.set_selected_slot(1)
 		_update_held_icon()
+
 	if event.is_action_pressed("hotbar_3"):
 		Inventory.set_selected_slot(2)
 		_update_held_icon()
+
 
 func _update_held_icon():
 	var id := Inventory.get_selected_item_id()
