@@ -1,0 +1,24 @@
+[remap]
+
+importer="wav"
+type="AudioStreamWAV"
+uid="uid://b33pcr3vokjcb"
+path="res://.godot/imported/GUI Sound Effects_049.wav-9b723bdb2675b3a41f1572f8f771872b.sample"
+
+[deps]
+
+source_file="res://Assets/UISound/GUI Sound Effects_049.wav"
+dest_files=["res://.godot/imported/GUI Sound Effects_049.wav-9b723bdb2675b3a41f1572f8f771872b.sample"]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=2
