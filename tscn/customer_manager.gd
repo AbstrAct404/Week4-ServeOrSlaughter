@@ -14,6 +14,7 @@ class_name CustomerManager
 @export var exit_marker: NodePath
 @export var max_inside := 4
 @export var max_total := 10
+@export var player_path: NodePath
 
 
 # assumed store interior to the RIGHT of door
@@ -68,14 +69,12 @@ func _spawn_customer() -> void:
 	add_child(c)
 	c.set_manager(self)
 
-	# 出生点：用 marker 更准（没有 marker 就退回 spawn_pos）
 	var sp := spawn_pos
 	if spawn_marker != NodePath():
 		var n = get_node_or_null(spawn_marker)
 		if n: sp = n.global_position
 	c.global_position = sp
 
-	# race + cost 你原来那段保留
 	var r := randi() % 3
 	c.race = r
 	var cost := 10
@@ -108,6 +107,15 @@ func _update_queue_targets() -> void:
 			var door = get_door()
 			if door and door.is_open:
 				front.set_inside_target(_random_inside_pos())
+
+func _all_customers() -> Array[Customer]:
+	var arr: Array[Customer] = []
+	for c in inside:
+		if c != null: arr.append(c)
+	for c in queue:
+		if c != null: arr.append(c)
+	return arr
+
 
 func is_pos_inside(pos: Vector2) -> bool:
 	var door = get_door()
@@ -145,8 +153,10 @@ func should_wait_before_opening_door(cust) -> bool:
 	var door = get_door()
 	if door == null:
 		return false
-	# if door closed and customer is trying to leave through it, wait 3s then open
-	return not door.is_open
+	if cust != null and cust.state == cust.State.PANIC:
+		return not door.is_open
+	return false
+
 
 # -------- interaction entry --------
 func on_customer_interact(cust, player) -> void:
@@ -250,40 +260,47 @@ func on_customer_kill(cust, player) -> void:
 	# witness & reputation penalty
 	var rep_loss := 0
 	if not cust.no_rep_loss_if_killed:
-		var any_witness := _handle_murder_witnesses(cust)
-		if any_witness and not _murder_penalty_used:
-			rep_loss = -10
-			Inventory.add_reputation(rep_loss)
-			_murder_penalty_used = true
+		var should_penalize := _handle_murder_witnesses(cust)
+		if should_penalize and not cust.no_rep_loss_if_killed:
+			Inventory.add_reputation(-10)
 			_toast_player(player, "Witnessed murder! Rep -10")
 			if Inventory.is_game_over():
 				_toast_player(player, "REPUTATION TOO LOW - GAME OVER")
 				get_tree().paused = true
 
+
 	# remove killed customer
 	_remove_customer(cust)
 
-func _handle_murder_witnesses(killed) -> bool:
+func _handle_murder_witnesses(killed: Customer) -> bool:
 	var door = get_door()
 	var door_closed = (door != null and not door.is_open)
 
 	var killed_inside := is_pos_inside(killed.global_position)
-	var any := false
-	for c in customers:
+
+	var any_visible := false
+	var any_calm_visible := false
+
+	for c in _all_customers():
 		if c == killed:
 			continue
 		if c.state == c.State.DEAD:
 			continue
-		# door blocks inside/outside sight
+
 		if door_closed:
 			if is_pos_inside(c.global_position) != killed_inside:
 				continue
-		# witnesses panic and try to leave
+
+		any_visible = true
+		if c.state != c.State.PANIC:
+			any_calm_visible = true
+
 		c.set_panic()
 		c.request_leave()
 		c.target_pos = get_exit_pos()
-		any = true
-	return any
+
+	return any_visible and any_calm_visible
+
 
 func _mark_thief(cust) -> void:
 	# simple visual cue on customer head
@@ -316,18 +333,19 @@ func _remove_customer(cust) -> void:
 		cust.queue_free()
 
 
-func _toast_player(player: Node, text: String) -> void:
+func _toast_player(player, text: String) -> void:
 	var ui = get_tree().get_first_node_in_group("ui_manager")
 	if ui == null:
 		return
-	var cam := get_viewport().get_camera_2d()
+
 	var world := Vector2.ZERO
-	if player and player is Node2D:
+	if player != null and player is Node2D:
 		world = player.global_position
-	if cam:
-		ui.show_toast(cam.unproject_position(world + Vector2(0,-50)), text)
-	else:
-		ui.show_toast(Vector2(30,30), text)
+
+	var screen := get_viewport().get_canvas_transform() * (world + Vector2(0, -32))
+	ui.show_toast(screen, text)
+
+
 
 func _queue_slot_pos(i: int) -> Vector2:
 	var base := spawn_pos
@@ -364,3 +382,21 @@ func _enqueue_outside(c: Customer) -> void:
 	c.state = c.State.QUEUE
 	_reposition_queue()
 	
+func on_customer_patience_expired(cust) -> void:
+	if cust == null:
+		return
+	# If already leaving/dead, ignore
+	if cust.state == cust.State.DEAD:
+		return
+
+	Inventory.add_reputation(-4)
+	_toast_player(get_player(), "Rep -4 (impatient customer)")
+
+	# send away normally; door-closed logic (wait 3s) should be inside _send_customer_away
+	_send_customer_away(cust, false)
+
+func get_player() -> Node2D:
+	var p = get_node_or_null(player_path)
+	if p != null and p is Node2D:
+		return p
+	return null

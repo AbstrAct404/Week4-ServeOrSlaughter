@@ -9,7 +9,7 @@
 [ext_resource type="PackedScene" uid="uid://bbeywgo1r5jsy" path="res://tscn/UI.tscn" id="7_1f6fc"]
 [ext_resource type="PackedScene" uid="uid://lkr63rya81m8" path="res://tscn/door.tscn" id="8_bhkyt"]
 [ext_resource type="Script" uid="uid://bktuwj3s4vsu4" path="res://tscn/customer_manager.gd" id="9_custmgr"]
-[ext_resource type="PackedScene" path="res://tscn/customer.tscn" id="10_custscene"]
+[ext_resource type="PackedScene" uid="uid://cxgcd4nkmfkuc" path="res://tscn/customer.tscn" id="10_custscene"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_rof17"]
 texture = ExtResource("1_rof17")
@@ -136,21 +136,14 @@ scale = Vector2(0.7, 0.9)
 script = ExtResource("9_custmgr")
 customer_scene = ExtResource("10_custscene")
 door_path = NodePath("Door")
-spawn_pos = null
-queue_dir = null
-queue_spacing = null
-max_customers = null
+max_customers = 10
 spawn_marker = NodePath("../CustSpawn")
 door_outside_marker = NodePath("../DoorOutside")
 inside_min_marker = NodePath("../InsideMin")
 inside_max_marker = NodePath("../InsideMax")
 exit_marker = NodePath("../ExitPos")
-max_inside = null
-max_total = null
-inside_min = null
-inside_max = null
-exit_pos = null
-exit_radius = null
+player_path = NodePath("../Player")
+exit_radius = 10.0
 
 [node name="Dishes" type="Node2D" parent="." unique_id=1258419546]
 

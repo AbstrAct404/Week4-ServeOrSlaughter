@@ -1,23 +1,34 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://cxgcd4nkmfkuc"]
 
-[ext_resource type="Script" path="res://tscn/customer.gd" id="1"]
-[ext_resource type="Texture2D" path="res://Assets/Fruit.png" id="2"]
+[ext_resource type="Script" uid="uid://bo1j5ja8radk0" path="res://tscn/customer.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://d5vsatc421im" path="res://Assets/Fruit.png" id="2"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_1"]
 radius = 14.0
 
-[node name="Customer" type="Area2D"]
+[node name="Customer" type="Area2D" unique_id=270144102]
 collision_layer = 4
 collision_mask = 0
 script = ExtResource("1")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1142070736]
 shape = SubResource("CircleShape2D_1")
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
-texture = ExtResource("2")
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=24892750]
 scale = Vector2(0.35, 0.35)
+texture = ExtResource("2")
 
-[node name="DesireLabel" type="Label" parent="."]
-position = Vector2(-40, -40)
+[node name="DesireLabel" type="Label" parent="." unique_id=420691451]
+offset_left = -40.0
+offset_top = -40.0
+offset_right = -40.0
+offset_bottom = -40.0
 text = "WANT"
+
+[node name="Patience" type="ProgressBar" parent="." unique_id=776907828]
+offset_left = -10.0
+offset_top = 16.0
+offset_right = 10.0
+offset_bottom = 21.0
+value = 100.0
+show_percentage = false

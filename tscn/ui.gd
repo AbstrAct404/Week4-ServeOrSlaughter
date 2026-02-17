@@ -84,6 +84,8 @@ func _item_icon(id: String) -> Texture2D:
 			return load("res://Assets/meat_wrap.png") 
 		"meal_veggie_wrap":
 			return load("res://Assets/veggie_wrap.png") 
+		"knife":
+			return load("res://Assets/Silverware.png")
 		_:
 			return load("res://Assets/Fruit.png")
 
@@ -108,17 +110,55 @@ func _ready():
 	_refresh_hud()
 
 
-
 func _unhandled_input(event):
 	if not ui_open:
 		return
-		
 
 	if event.is_action_pressed("cancel"):
 		close_ui()
 		get_viewport().set_input_as_handled()
 		return
 
+	# --- Bag mode input mapping ---
+	if mode == "bag":
+		if event.is_action_pressed("ui_up"):
+			_move_selection(-1)
+			get_viewport().set_input_as_handled()
+			return
+		elif event.is_action_pressed("ui_down"):
+			_move_selection(1)
+			get_viewport().set_input_as_handled()
+			return
+		elif event.is_action_pressed("ui_left"):
+			Inventory.set_selected_slot(Inventory.hotbar_selected - 1)
+			_refresh_hud()
+			if current_player and current_player.has_method("_update_held_icon"):
+				current_player._update_held_icon()
+			get_viewport().set_input_as_handled()
+			return
+		elif event.is_action_pressed("ui_right"):
+			Inventory.set_selected_slot(Inventory.hotbar_selected + 1)
+			_refresh_hud()
+			if current_player and current_player.has_method("_update_held_icon"):
+				current_player._update_held_icon()
+			get_viewport().set_input_as_handled()
+			return
+
+		# F swap
+		if event.is_action_pressed("swap_hotbar"):
+			if selection_index >= 0 and selection_index < bag_view_ids.size():
+				var id := bag_view_ids[selection_index]
+				var ok := Inventory.equip_from_bag(id)
+				if ok:
+					_set_status("Swapped to slot %d: %s" % [Inventory.hotbar_selected + 1, id], true)
+				else:
+					_set_status("Cannot swap.", false)
+				_refresh_bag()
+				_refresh_hud()
+			get_viewport().set_input_as_handled()
+			return
+
+	# --- Non-bag modes keep your old behavior ---
 	if event.is_action_pressed("ui_up"):
 		_move_selection(-1)
 		get_viewport().set_input_as_handled()
@@ -137,21 +177,9 @@ func _unhandled_input(event):
 			ignore_next_interact = false
 			get_viewport().set_input_as_handled()
 			return
-
 		_confirm()
 		get_viewport().set_input_as_handled()
 
-		
-	if ui_open and mode == "bag" and event.is_action_pressed("swap_hotbar"):
-		if selection_index >= 0 and selection_index < bag_view_ids.size():
-			var id := bag_view_ids[selection_index]
-			var ok := Inventory.equip_from_bag(id)
-			if ok:
-				_set_status("Equipped to slot %d: %s" % [Inventory.hotbar_selected + 1, id], true)
-			else:
-				_set_status("Cannot equip.", false)
-			_refresh_bag()
-			_refresh_hud()
 
 
 
@@ -213,6 +241,8 @@ func _current_count() -> int:
 		return recipe_list.get_child_count()
 	if mode == "shop":
 		return shop_list.get_child_count()
+	if mode == "bag":
+		return bag_view_ids.size()
 	return 0
 
 func _move_selection(delta: int):
@@ -310,6 +340,7 @@ func _cook_selected():
 	for k in r["needs"].keys():
 		var amt := int(r["needs"][k])
 		if not Inventory.has_item(k, amt):
+			toast_on_player("Not enough ingredients")
 			return
 
 	# consume
@@ -324,10 +355,7 @@ func _cook_selected():
 		if not shown:
 			_show_dish_on_counter(k)
 			shown = true
-
-
-
-
+			
 	_set_status("Cooked: %s" % r["name"], true)
 	
 	
@@ -338,6 +366,7 @@ func _buy_selected():
 
 	if Inventory.money < price:
 		_set_status("Not enough money.", false)
+		toast_on_player("Not enough money")
 		return
 
 	Inventory.money -= price
@@ -369,26 +398,40 @@ func open_bag(player: Node) -> void:
 
 
 
-#fixed the function so it can refelct real buying action
 func _refresh_bag() -> void:
 	bag_money.text = "Money: $%d   Rep: %d" % [Inventory.money, Inventory.reputation]
-	
+
+	var hint: Label = $BagPanel/VBoxContainer/Hint
+	hint.text = "Up/Down: Select Item   Left/Right: Select Slot   F: Swap   Q: Exit"
+
 	for c in bag_list.get_children():
 		c.queue_free()
-		
-	bag_view_ids.clear()  # <-- move clear HERE
-	
+
+	bag_view_ids.clear()
+
 	var keys := Inventory.bag.keys()
 	keys.sort()
-	
+
 	for k in keys:
 		var amt := int(Inventory.bag.get(k, 0))
 		if amt <= 0:
 			continue
-		var line := Label.new()
+
 		bag_view_ids.append(k)
+
+		var line := Label.new()
 		line.text = "%s x%d" % [k, amt]
+
+		var idx := bag_view_ids.size() - 1
+		line.modulate = Color(1,1,1,1) if idx == selection_index else Color(0.75,0.75,0.75,1)
+
 		bag_list.add_child(line)
+
+	if bag_view_ids.size() == 0:
+		selection_index = 0
+	else:
+		selection_index = clamp(selection_index, 0, bag_view_ids.size() - 1)
+
 
 
 #------------------------------------Cooking------------------------------------
@@ -617,3 +660,14 @@ func close_customer_menu() -> void:
 	_lock_player(false)
 	_cust_current_customer = null
 	_cust_current_player = null
+
+func toast_on_player(text: String) -> void:
+	var player := get_tree().current_scene.get_node_or_null("Player")
+	if player == null:
+		# fallback top-left
+		show_toast(Vector2(30, 30), text)
+		return
+
+	var world := (player as Node2D).global_position + Vector2(0, -32)
+	var screen := get_viewport().get_canvas_transform() * world
+	show_toast(screen, text)

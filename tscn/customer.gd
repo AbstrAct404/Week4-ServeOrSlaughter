@@ -5,6 +5,12 @@ enum Race { MONSTER, HUMAN, ANIMAL }
 enum State { QUEUE, ENTERING, WAITING, LEAVING, PANIC, DEAD }
 
 @export var race: Race = Race.HUMAN
+@export var patience_max: float = 20.0
+
+var patience_left: float = 0.0
+var patience_running: bool = false
+
+@onready var patience_bar: ProgressBar = $"Patience"
 
 # For now:
 # - Monster/Human want any meat
@@ -38,6 +44,11 @@ func _ready() -> void:
 	collision_layer = 4
 	_pick_want()
 	_refresh_visual()
+	if patience_bar:
+		patience_bar.visible = false
+		patience_bar.min_value = 0.0
+		patience_bar.max_value = 1.0
+		patience_bar.value = 1.0
 
 func _pick_want() -> void:
 	if race == Race.ANIMAL:
@@ -81,6 +92,7 @@ func set_panic() -> void:
 	state = State.PANIC
 	_leave_requested = true
 	_leave_wait = 0.0
+	_stop_patience()
 	if desire_label:
 		desire_label.text = "PANIC!"
 
@@ -135,6 +147,9 @@ func _physics_process(delta: float) -> void:
 
 	# waiting logic
 	if state == State.WAITING:
+		if global_position.distance_to(target_pos) <= 2.0:
+			state = State.WAITING
+			_start_patience()
 		# after 30s -> leave
 		if get_elapsed_in_shop() >= 30.0:
 			_leave_requested = true
@@ -159,6 +174,21 @@ func _physics_process(delta: float) -> void:
 		if manager and manager.has_method("is_at_exit"):
 			if manager.is_at_exit(global_position):
 				manager.on_customer_left(self)
+				
+	if patience_running:
+		patience_left -= delta
+		var t = clamp(patience_left / patience_max, 0.0, 1.0)
+		if patience_bar:
+			patience_bar.value = t
+
+		if patience_left <= 0.0:
+			patience_left = 0.0
+			patience_running = false
+			if patience_bar:
+				patience_bar.value = 0.0
+			# notify manager once
+			if manager != null:
+				manager.on_customer_patience_expired(self)
 
 func interact(player: Node) -> void:
 	if manager and manager.has_method("on_customer_interact"):
@@ -168,11 +198,26 @@ func interact(player: Node) -> void:
 func on_player_submit(player: Node) -> void:
 	if manager and manager.has_method("on_customer_submit"):
 		manager.on_customer_submit(self, player)
+	_stop_patience()
 
 func on_player_kill(player: Node) -> void:
 	if manager and manager.has_method("on_customer_kill"):
 		manager.on_customer_kill(self, player)
+	_stop_patience()
 
 func mark_dead() -> void:
 	state = State.DEAD
+	_stop_patience()
 	queue_free()
+
+func _start_patience() -> void:
+	patience_left = patience_max
+	patience_running = true
+	if patience_bar:
+		patience_bar.visible = true
+		patience_bar.value = 1.0
+
+func _stop_patience() -> void:
+	patience_running = false
+	if patience_bar:
+		patience_bar.visible = false
