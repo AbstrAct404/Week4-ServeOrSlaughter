@@ -78,6 +78,10 @@ func _item_icon(id: String) -> Texture2D:
 			return load("res://Assets/Fruit.png")
 		"flatbread":
 			return load("res://Assets/Furniture.png")
+		"meal_spicy_wrap":
+			return load("res://Assets/meat_wrap.png") 
+		"meal_veggie_wrap":
+			return load("res://Assets/veggie_wrap.png") 
 		_:
 			return load("res://Assets/Fruit.png")
 
@@ -306,8 +310,16 @@ func _cook_selected():
 		Inventory.remove_item(k, int(r["needs"][k]))
 
 	# produce
+	var shown := false
 	for k in r["gives"].keys():
 		Inventory.add_item(k, int(r["gives"][k]))
+
+		if not shown:
+			_show_dish_on_counter(k)
+			shown = true
+
+
+
 
 	_set_status("Cooked: %s" % r["name"], true)
 	
@@ -370,6 +382,39 @@ func _refresh_bag() -> void:
 		bag_view_ids.append(k)
 		line.text = "%s x%d" % [k, amt]
 		bag_list.add_child(line)
+
+
+#------------------------------------Cooking------------------------------------
+
+func _show_dish_on_counter(dish_id: String) -> void:
+	var map := get_tree().current_scene
+	if map == null:
+		return
+
+	var dishes_root := map.get_node_or_null("Dishes")
+	if dishes_root == null:
+		_set_status("No Dishes node.", false)
+		return
+
+	var spawn := dishes_root.get_node_or_null("DishSpawnPoint")
+	if spawn == null:
+		_set_status("No DishSpawnPoint.", false)
+		return
+
+	var dish_sprite := dishes_root.get_node_or_null("DishSprite") as Sprite2D
+	if dish_sprite == null:
+		_set_status("No DishSprite found.", false)
+		return
+
+	var tex := _item_icon(dish_id)
+	if tex == null:
+		_set_status("No texture for: %s" % dish_id, false)
+		return
+
+	dish_sprite.texture = tex
+	dish_sprite.global_position = spawn.global_position
+	dish_sprite.scale = Vector2(0.15, 0.15) # tweak this
+	dish_sprite.visible = true
 
 
 
