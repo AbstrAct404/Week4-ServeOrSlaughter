@@ -23,6 +23,12 @@ config/icon="res://icon.svg"
 
 Inventory="*res://inventory.gd"
 
+[display]
+
+window/size/viewport_width=1200
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+
 [input]
 
 move_left={

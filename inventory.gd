@@ -21,6 +21,9 @@ var reputation: int = 0
 var hotbar: Array[String] = ["", "", ""]
 var hotbar_selected: int = 0  # 0..2
 
+
+
+
 func has_item(id: String, amount: int = 1) -> bool:
 	return int(bag.get(id, 0)) >= amount
 

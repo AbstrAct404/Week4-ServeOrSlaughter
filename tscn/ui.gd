@@ -1,5 +1,13 @@
 extends CanvasLayer
 
+
+@onready var coin_label: Label = $HUD/VBox/CoinLabel
+@onready var rep_bar: ProgressBar = $HUD/VBox/HBox/RepBar
+@onready var rep_text: Label = $HUD/VBox/HBox/RepText
+
+
+
+
 @onready var bag_panel: Control = $BagPanel
 @onready var bag_money: Label = $BagPanel/VBoxContainer/MoneyLabel
 @onready var bag_list: VBoxContainer = $BagPanel/VBoxContainer/ItemList
@@ -124,9 +132,33 @@ func _refresh_hud():
 
 		var p: PanelContainer = hotbar_panels[i]
 		p.modulate = Color(1,1,1,1) if i == Inventory.hotbar_selected else Color(0.7,0.7,0.7,1)
+		
+		
+	# Coins
+	coin_label.text = "Coins: $%d" % Inventory.money
+
+	var rep := Inventory.reputation
+	var norm := rep + 50
+
+	rep_bar.min_value = 0
+	rep_bar.max_value = 100
+	rep_bar.value = norm
+
+	rep_text.text = "Respect: %d" % rep
+
+
+	$HUD/VBox/HBox/RepText.text = "Respect: %d" % Inventory.reputation
+
 
 
 func _ready():
+
+	_build_cooking_ui()
+	_build_shop_ui()
+	_hide_all()
+	add_to_group("ui_manager")
+	Inventory.changed.connect(_refresh_hud)
+	_refresh_hud()
 	set_process_unhandled_input(true)
 	_build_cooking_ui()
 	_build_shop_ui()
@@ -489,7 +521,7 @@ func _show_dish_on_counter(dish_id: String) -> void:
 
 	dish_sprite.texture = tex
 	dish_sprite.global_position = spawn.global_position
-	dish_sprite.scale = Vector2(0.15, 0.15) # tweak this
+	dish_sprite.s = Vector2(0.15, 0.15) # tweak this
 	dish_sprite.visible = true
 
 
