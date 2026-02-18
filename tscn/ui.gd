@@ -7,7 +7,6 @@ extends CanvasLayer
 
 
 
-
 @onready var bag_panel: Control = $BagPanel
 @onready var bag_money: Label = $BagPanel/VBoxContainer/MoneyLabel
 @onready var bag_list: VBoxContainer = $BagPanel/VBoxContainer/ItemList
@@ -38,6 +37,7 @@ extends CanvasLayer
 ]
 
 
+
 var ui_open := false
 var mode := "" # "cook" / "shop"
 var selection_index := 0
@@ -51,10 +51,10 @@ var ignore_next_interact := false
 
 var recipes := [
 	{
-		"id": "spicy_wrap",
-		"name": "Spicy Wrap",
-		"needs": {"flatbread": 1, "pork": 1, "spice": 1},
-		"gives": {"meal_spicy_wrap": 1} #changed meat_monster to meat_pork to be able to craft with no monsters
+		"id": "meat_wrap",
+		"name": "Meat Wrap",
+		"needs": {"flatbread": 1, "meat": 1, "spice": 1},
+		"gives": {"meal_meat_wrap": 1}
 	},
 	{
 		"id": "veggie_wrap",
@@ -105,7 +105,7 @@ func _item_icon(id: String) -> Texture2D:
 			return load("res://Assets/Furniture.png")
 		"knife":
 			return load("res://Assets/Silverware.png")
-		"meal_spicy_wrap":
+		"meal_meat_wrap":
 			return load("res://Assets/meat_wrap.png") 
 		"meal_veggie_wrap":
 			return load("res://Assets/veggie_wrap.png") 
@@ -255,7 +255,14 @@ func open_cooking(player: Node) -> void:
 	shop_panel.visible = false
 	_refresh_cooking()
 
+func _resolve_meat() -> String:
+	if Inventory.has_item("meat_monster", 1):
+		return "meat_monster"
+	if Inventory.has_item("pork", 1):
+		return "pork"
+	return ""
 
+	
 func open_shop(player: Node) -> void:
 	current_player = player
 	_lock_player(true)
@@ -376,13 +383,26 @@ func _refresh_cooking():
 
 	for k in r["needs"].keys():
 		var need_amt := int(r["needs"][k])
-		var have_amt := int(Inventory.bag.get(k, 0))
-		var ok := Inventory.has_item(k, need_amt)
+
+		var have_amt := 0
+		var ok := false
+		var label_name = String(k)
+
+		if k == "meat":
+			var pork_amt := int(Inventory.bag.get("pork", 0))
+			var monster_amt := int(Inventory.bag.get("meat_monster", 0))
+			have_amt = pork_amt + monster_amt
+			ok = have_amt >= need_amt
+			label_name = "meat (pork or monster)"
+		else:
+			have_amt = int(Inventory.bag.get(k, 0))
+			ok = have_amt >= need_amt
 
 		var line := Label.new()
-		line.text = "- %s x%d (you: %d)" % [k, need_amt, have_amt]
+		line.text = "- %s x%d (you: %d)" % [label_name, need_amt, have_amt]
 		line.modulate = Color(1,1,1,1) if ok else Color(0.45,0.45,0.45,1)
 		recipe_detail.add_child(line)
+
 
 func _refresh_shop():
 	shop_money.text = "Money: $%d   Rep: %d" % [Inventory.money, Inventory.reputation]
@@ -394,28 +414,53 @@ func _refresh_shop():
 func _cook_selected():
 	var r = recipes[selection_index]
 
-	# check
+	# 1) Check requirements (category-aware)
+	var chosen_meat := ""
+
 	for k in r["needs"].keys():
 		var amt := int(r["needs"][k])
-		if not Inventory.has_item(k, amt):
-			toast_on_player("Not enough ingredients")
-			return
 
-	# consume
+		if k == "meat":
+			chosen_meat = _resolve_meat()
+			if chosen_meat == "":
+				_set_status("Need meat (pork or monster meat).", false)
+				return
+		else:
+			if not Inventory.has_item(k, amt):
+				_set_status("Missing: %s x%d" % [k, amt], false)
+				return
+
+
+	# 2) Consume requirements
 	for k in r["needs"].keys():
-		Inventory.remove_item(k, int(r["needs"][k]))
+		var amt := int(r["needs"][k])
 
-	# produce
-	var shown := false
-	for k in r["gives"].keys():
-		Inventory.add_item(k, int(r["gives"][k]))
+		if k == "meat":
+			Inventory.remove_item(chosen_meat, amt)
+		else:
+			Inventory.remove_item(k, amt)
 
-		if not shown:
-			_show_dish_on_counter(k)
-			shown = true
-			
+
+	# 3) Produce result
+	var cooked_id := ""
+
+	for out_id in r["gives"].keys():
+		var out_amt := int(r["gives"][out_id])
+		Inventory.add_item(out_id, out_amt)
+		cooked_id = out_id
+
+		# store metadata if this dish used meat
+		if chosen_meat != "":
+			if not Inventory.dish_meta.has(out_id):
+				Inventory.dish_meta[out_id] = {}
+			Inventory.dish_meta[out_id]["meat_type"] = chosen_meat
+
+	if cooked_id != "":
+		_show_dish_on_counter(cooked_id)
+
 	_set_status("Cooked: %s" % r["name"], true)
-	
+
+
 	
 func _buy_selected():
 	var it = shop_items[selection_index]
@@ -521,7 +566,7 @@ func _show_dish_on_counter(dish_id: String) -> void:
 
 	dish_sprite.texture = tex
 	dish_sprite.global_position = spawn.global_position
-	dish_sprite.s = Vector2(0.15, 0.15) # tweak this
+	dish_sprite.scale = Vector2(0.15, 0.15) # tweak this
 	dish_sprite.visible = true
 
 

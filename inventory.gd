@@ -16,6 +16,9 @@ var bag: Dictionary = {
 	"knife": 1
 }
 
+var dish_meta: Dictionary = {} 
+# example: {"meal_meat_wrap": {"meat_type": "meat_monster"}}
+
 var money: int = 50
 var reputation: int = 0
 var hotbar: Array[String] = ["", "", ""]
