@@ -53,6 +53,21 @@ var recipes := [
 		"name": "Veggie Wrap",
 		"needs": {"flatbread": 1, "veggies": 2, "sauce": 1},
 		"gives": {"meal_veggie_wrap": 1}
+	},
+	
+	{
+	"id": "mushroom_soup",
+	"name": "Mushroom Soup",
+	"needs": {"mushroom": 2, "sauce": 1},
+	"gives": {"meal_mushroom_soup": 1}
+	},
+	
+	
+	{
+	"id": "chicken_skewers",
+	"name": "Garlic Chicken Skewers",
+	"needs": {"chicken": 1, "spice": 1},
+	"gives": {"meal_chicken_skewers": 1}
 	}
 ]
 
@@ -62,6 +77,8 @@ var shop_items := [
 	{"id":"sauce",         "name":"Sauce",         "price": 7},
 	{"id":"spice",         "name":"Spice",         "price": 4},
 	{"id":"pork",     "name":"Pork",          "price": 14},
+	{"id":"mushroom",  "name":"Mushroom",  "price": 8},
+	{"id":"chicken",   "name":"Chicken",   "price": 14}
 ]
 
 func _item_icon(id: String) -> Texture2D:
@@ -86,6 +103,15 @@ func _item_icon(id: String) -> Texture2D:
 			return load("res://Assets/veggie_wrap.png") 
 		"knife":
 			return load("res://Assets/Silverware.png")
+		"mushroom":
+			return load("res://Assets/Vegetables.png") # temp
+		"chicken":
+			return load("res://Assets/Meat.png") # temp
+		"meal_mushroom_soup":
+			return load("res://Assets/mushroom_soup.png") # temp until you draw it
+		"meal_chicken_skewers":
+			return load("res://Assets/chicken_skewers.png") # temp
+			
 		_:
 			return load("res://Assets/Fruit.png")
 
