@@ -256,11 +256,11 @@ func open_cooking(player: Node) -> void:
 	_refresh_cooking()
 
 func _resolve_meat() -> String:
-	if Inventory.has_item("meat_monster", 1):
-		return "meat_monster"
-	if Inventory.has_item("pork", 1):
-		return "pork"
+	for id in ["meat_monster", "pork", "beef", "chicken", "meat_human", "meat_mixed"]:
+		if Inventory.has_item(id, 1):
+			return id
 	return ""
+
 
 	
 func open_shop(player: Node) -> void:

@@ -40,6 +40,20 @@ var _leave_wait := 0.0
 @onready var desire_label: Label = $DesireLabel
 @onready var sprite: Sprite2D = $Sprite2D
 
+const WANT_POOL := [
+	"meal_meat_wrap",
+	"meal_veggie_wrap",
+	"meal_mushroom_soup",
+	"meal_chicken_skewers"
+]
+
+const WANT_NAMES := {
+	"meal_meat_wrap": "Meat Wrap",
+	"meal_veggie_wrap": "Veggie Wrap",
+	"meal_mushroom_soup": "Mushroom Soup",
+	"meal_chicken_skewers": "Chicken Skewers"
+}
+
 func _ready() -> void:
 	collision_layer = 4
 	_pick_want()
@@ -50,23 +64,33 @@ func _ready() -> void:
 		patience_bar.max_value = 1.0
 		patience_bar.value = 1.0
 
+
 func _pick_want() -> void:
-	if race == Race.ANIMAL:
-		want_kind = "veggie"
-	else:
-		want_kind = "meat"
+	want_kind = WANT_POOL.pick_random()
+
 
 func _refresh_visual() -> void:
 	match race:
 		Race.MONSTER:
-			sprite.texture = load("res://Assets/Meat.png")
+			sprite.texture = load("res://Assets/monster.png")
+			sprite.scale = Vector2(3, 3)  # try 3 first
 		Race.HUMAN:
-			sprite.texture = load("res://Assets/Fruit.png")
+			sprite.texture = load("res://Assets/monster.png")
+			sprite.scale = Vector2(1.5,1.5)
 		Race.ANIMAL:
-			sprite.texture = load("res://Assets/Vegetables.png")
+			sprite.texture = load("res://Assets/monster.png")
+			sprite.scale = Vector2(3, 3)
 		_:
 			pass
-	desire_label.text = "WANT: %s" % want_kind.to_upper()
+
+	sprite.centered = true
+	sprite.offset = Vector2(0, -16)  # lift slightly so feet touch ground
+
+	var name: String = str(WANT_NAMES.get(want_kind, want_kind))
+	desire_label.text = "WANT:\n%s" % name
+	desire_label.position = Vector2(0, -80)
+
+
 
 func set_manager(m: Node) -> void:
 	manager = m
@@ -142,9 +166,13 @@ func _physics_process(delta: float) -> void:
 
 	if state in [State.QUEUE, State.ENTERING, State.LEAVING, State.PANIC]:
 		var to := target_pos - global_position
-		if to.length() > 2.0:
-			global_position += to.normalized() * speed * delta
+		
+		var dist := to.length()
+		if dist > 2.0:
+			var step: float = min(speed * delta, dist)
+			global_position += (to / dist) * step
 
+	
 	# waiting logic
 	if state == State.WAITING:
 		if global_position.distance_to(target_pos) <= 2.0:

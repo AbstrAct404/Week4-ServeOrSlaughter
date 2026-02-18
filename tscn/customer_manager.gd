@@ -5,7 +5,10 @@ class_name CustomerManager
 @export var door_path: NodePath
 @export var spawn_pos: Vector2 = Vector2(240, 560)
 @export var queue_dir: Vector2 = Vector2(1, 0)
-@export var queue_spacing: float = 55.0
+
+@export var queue_spacing: float = 300.0
+@export var inside_min_distance := 70.0  # tweak based on sprite size
+
 @export var max_customers: int = 5
 @export var spawn_marker: NodePath
 @export var door_outside_marker: NodePath
@@ -13,7 +16,7 @@ class_name CustomerManager
 @export var inside_max_marker: NodePath
 @export var exit_marker: NodePath
 @export var max_inside := 4
-@export var max_total := 10
+@export var max_total := 5
 @export var player_path: NodePath
 
 
@@ -24,11 +27,16 @@ class_name CustomerManager
 @export var exit_pos: Vector2 = Vector2(180, 560)
 @export var exit_radius: float = 18.0
 
+var _toast_stack := 0
+
+
 var customers: Array = []
 var _spawn_timer := 0.0
 var _spawn_interval := 6.0
-var inside: Array[Customer]
-var queue: Array[Customer]
+var inside: Array[Customer] = []
+var queue: Array[Customer] = []
+
+
 
 var _murder_penalty_used := false
 
@@ -41,12 +49,16 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_spawn_timer += delta
+
 	if _spawn_timer >= _spawn_interval:
 		_spawn_timer = 0.0
 		_spawn_interval = randf_range(5.0, 9.0)
-		if (inside.size() + queue.size()) < max_total:
+
+		if _alive_customer_count() < max_total:
 			_spawn_customer()
+
 	_tick_admission()
+
 
 func _tick_admission() -> void:
 	var door = get_door()
@@ -135,6 +147,22 @@ func _random_inside_pos() -> Vector2:
 	var b = get_node(inside_max_marker).global_position
 	var minv = Vector2(min(a.x,b.x), min(a.y,b.y))
 	var maxv = Vector2(max(a.x,b.x), max(a.y,b.y))
+
+	# try multiple times to find a spot not too close to others
+	for _i in range(12):
+		var p = Vector2(randf_range(minv.x, maxv.x), randf_range(minv.y, maxv.y))
+
+		var ok := true
+		for other in inside:
+			if other != null and is_instance_valid(other):
+				if other.global_position.distance_to(p) < inside_min_distance:
+					ok = false
+					break
+
+		if ok:
+			return p
+
+	# fallback if crowded
 	return Vector2(randf_range(minv.x, maxv.x), randf_range(minv.y, maxv.y))
 
 
@@ -164,7 +192,7 @@ func on_customer_interact(cust, player) -> void:
 	if ui == null:
 		return
 
-	var can_kill := (Inventory.get_selected_item_id() == "knife")
+	var can_kill := true
 	var can_submit := _player_can_satisfy(cust.want_kind)
 
 	var want_text := "Customer wants: %s\nGold now: %d   Rep now: %d" % [
@@ -176,24 +204,14 @@ func on_customer_interact(cust, player) -> void:
 	ui.open_customer_menu(player, cust, can_submit, can_kill, want_text)
 
 func _player_can_satisfy(kind: String) -> bool:
-	if kind == "veggie":
-		return Inventory.has_item("veggies", 1) or Inventory.has_item("meal_veggie_wrap", 1)
-	# meat: any one of these
-	for id in ["pork","beef","chicken","meat_monster","meat_human","meat_mixed","meal_spicy_wrap"]:
-		if Inventory.has_item(id, 1):
-			return true
-	return false
+	# kind is now an exact item id, like "meal_meat_wrap"
+	return Inventory.has_item(kind, 1)
+
 
 func _consume_for_kind(kind: String) -> bool:
-	if kind == "veggie":
-		if Inventory.remove_item("meal_veggie_wrap", 1):
-			return true
-		return Inventory.remove_item("veggies", 1)
-	# meat
-	for id in ["meal_spicy_wrap","pork","beef","chicken","meat_monster","meat_human","meat_mixed"]:
-		if Inventory.remove_item(id, 1):
-			return true
-	return false
+	# kind is an exact item id, like "meal_meat_wrap"
+	return Inventory.remove_item(kind, 1)
+
 
 # -------- submit food --------
 func on_customer_submit(cust, player) -> void:
@@ -271,6 +289,8 @@ func on_customer_kill(cust, player) -> void:
 
 	# remove killed customer
 	_remove_customer(cust)
+	_tick_admission()
+
 
 func _handle_murder_witnesses(killed: Customer) -> bool:
 	var door = get_door()
@@ -281,15 +301,19 @@ func _handle_murder_witnesses(killed: Customer) -> bool:
 	var any_visible := false
 	var any_calm_visible := false
 
+	var witness_radius := 300.0  # tweak
+
 	for c in _all_customers():
-		if c == killed:
-			continue
-		if c.state == c.State.DEAD:
+		if c == killed or c.state == c.State.DEAD:
 			continue
 
-		if door_closed:
-			if is_pos_inside(c.global_position) != killed_inside:
-				continue
+		# if door is closed, don't see across door sides
+		if door_closed and is_pos_inside(c.global_position) != killed_inside:
+			continue
+
+		# NEW: only nearby customers witness it
+		if c.global_position.distance_to(killed.global_position) > witness_radius:
+			continue
 
 		any_visible = true
 		if c.state != c.State.PANIC:
@@ -331,6 +355,8 @@ func _remove_customer(cust) -> void:
 
 	if is_instance_valid(cust):
 		cust.queue_free()
+		
+	_tick_admission()  
 
 
 func _toast_player(player, text: String) -> void:
@@ -343,6 +369,10 @@ func _toast_player(player, text: String) -> void:
 		world = player.global_position
 
 	var screen := get_viewport().get_canvas_transform() * (world + Vector2(0, -32))
+
+	_toast_stack = (_toast_stack + 1) % 6
+	screen.y -= 18 * _toast_stack  # NEW: stacks upward
+
 	ui.show_toast(screen, text)
 
 
@@ -350,9 +380,16 @@ func _toast_player(player, text: String) -> void:
 func _queue_slot_pos(i: int) -> Vector2:
 	var base := spawn_pos
 	if door_outside_marker != NodePath():
-		var m = get_node_or_null(door_outside_marker)
-		if m: base = m.global_position
-	return base + Vector2(-queue_spacing * float(i), 0)
+		var m := get_node_or_null(door_outside_marker)
+		if m and m is Node2D:
+			base = (m as Node2D).global_position
+
+	var dir := queue_dir.normalized()
+	if dir == Vector2.ZERO:
+		dir = Vector2(-1, 0)
+
+	return base + dir * queue_spacing * float(i)
+
 
 func _reposition_queue() -> void:
 	for i in range(queue.size()):
@@ -400,3 +437,11 @@ func get_player() -> Node2D:
 	if p != null and p is Node2D:
 		return p
 	return null
+
+
+func _alive_customer_count() -> int:
+	var count := 0
+	for c in _all_customers():
+		if is_instance_valid(c) and c.state != c.State.DEAD:
+			count += 1
+	return count
